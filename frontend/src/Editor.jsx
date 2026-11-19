@@ -1,3 +1,4 @@
+import OfferPicker from './OfferPicker';
 import React, { useState } from 'react';
 
 async function request(path, body) {
@@ -14,7 +15,6 @@ export default function Editor({offers}) {
   const [busy, setBusy] = useState(false);
   const [choices, setChoices] = useState({});
   const [weights, setWeights] = useState({});
-  const [search, setSearch] = useState('');
   async function execute(callback) {
     setBusy(true);
     setError('');
@@ -36,7 +36,6 @@ export default function Editor({offers}) {
     {busy && <p role="status">Выполняем запрос…</p>}
     {campaign && <>
       <h2>{campaign.name} · #{campaign.id}</h2>
-      <label>Поиск оффера для добавления<input value={search} onChange={event => setSearch(event.target.value)} placeholder="Название или ID" /></label>
       {campaign.streams.map(stream => <article key={stream.id} className={`stream ${stream.dirty ? 'dirty' : ''}`}>
         <h3>{stream.name} <small>#{stream.id} · {stream.dirty ? 'Есть неопубликованные изменения' : 'Сохранено'}</small></h3>
         {stream.offers.length === 0 ? <p>В потоке нет офферов.</p> : <div className="table-wrap"><table><thead><tr><th>Оффер</th><th>Доля</th><th>Действия</th></tr></thead><tbody>
@@ -51,11 +50,8 @@ export default function Editor({offers}) {
           </tr>)}
         </tbody></table></div>}
         <p>Сумма активных долей — {stream.offers.filter(offer => !offer.removed).reduce((sum, offer) => sum + offer.share, 0)}%</p>
-        {stream.editable && <div className="add-offer"><select aria-label={`Добавить оффер в ${stream.name}`} value={choices[stream.id] || ''} onChange={event => setChoices({...choices, [stream.id]: event.target.value})}>
-          <option value="">Выберите оффер</option>{offers.filter(offer => `${offer.id} ${offer.name}`.toLowerCase().includes(search.trim().toLowerCase()) && !stream.offers.some(item => item.id === offer.id && !item.removed)).map(offer => <option key={offer.id} value={offer.id}>#{offer.id} {offer.name}</option>)}
-        </select><button disabled={busy || !choices[stream.id]} onClick={() => act(stream, 'add', Number(choices[stream.id]))}>Добавить</button></div>}
+        {stream.editable && <div className="add-offer"><OfferPicker offers={offers.filter(offer => !stream.offers.some(item => item.id === offer.id && !item.removed))} value={choices[stream.id] || ''} disabled={busy} onChange={id => setChoices(current => ({...current, [stream.id]: id}))} /><button disabled={busy || !choices[stream.id]} onClick={() => act(stream, 'add', Number(choices[stream.id]))}>Добавить</button></div>}
         {stream.editable && !offers.some(offer => !stream.offers.some(item => item.id === offer.id && !item.removed)) && <p role="status">Все доступные офферы уже в потоке. Keitaro вернул активных офферов: {offers.length}.</p>}
-        {stream.editable && offers.some(offer => !stream.offers.some(item => item.id === offer.id && !item.removed)) && !offers.some(offer => `${offer.id} ${offer.name}`.toLowerCase().includes(search.trim().toLowerCase()) && !stream.offers.some(item => item.id === offer.id && !item.removed)) && <p role="status">По этому запросу офферы для добавления не найдены. Очистите поиск.</p>}
         {stream.dirty && <div className="stream-actions"><button disabled={busy} onClick={() => act(stream, 'push')}>Опубликовать в Keitaro</button><button className="secondary" disabled={busy} onClick={() => act(stream, 'cancel')}>Отменить изменения</button></div>}
       </article>)}
     </>}
